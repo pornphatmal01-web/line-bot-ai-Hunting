@@ -11,53 +11,67 @@ interface SheetCache {
 
 let cache: SheetCache | null = null;
 
+// Parser เดียวไล่ทั้งไฟล์ ไม่ split เป็นบรรทัดก่อน — เพราะ cell ในชีตอาจมีการ
+// ขึ้นบรรทัดใหม่ในตัวเอง (multi-line answer ที่ครอบด้วย quote) การ split ด้วย
+// \n ก่อนจะตัด quoted field ที่มีหลายบรรทัดให้ขาดครึ่งกลางทาง
+function parseCsvRows(csvRaw: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < csvRaw.length; i++) {
+    const char = csvRaw[i];
+    if (char === "\r") continue; // ส่วนหนึ่งของ \r\n เสมอ ไม่ต้องเก็บไว้ในค่า
+
+    if (inQuotes) {
+      if (char === '"' && csvRaw[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (char === '"') {
+        inQuotes = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+
+  if (field.length > 0 || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
 function parseCsv(csvRaw: string): FaqRow[] {
-  const lines = csvRaw.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
+  const rows = parseCsvRows(csvRaw.trim());
+  if (rows.length < 2) return [];
 
-  const headers = splitCsvLine(lines[0]).map((h) => h.trim().toLowerCase());
+  const headers = rows[0].map((h) => h.trim().toLowerCase());
 
-  return lines
+  return rows
     .slice(1)
-    .filter((line) => line.trim().length > 0)
-    .map((line) => {
-      const values = splitCsvLine(line);
+    .filter((values) => values.some((v) => v.trim().length > 0))
+    .map((values) => {
       const row: Record<string, string> = {};
       headers.forEach((header, i) => {
         row[header] = (values[i] ?? "").trim();
       });
       return row as unknown as FaqRow;
     });
-}
-
-function splitCsvLine(line: string): string[] {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-
-    if (inQuotes) {
-      if (char === '"' && line[i + 1] === '"') {
-        current += '"';
-        i++;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        current += char;
-      }
-    } else if (char === '"') {
-      inQuotes = true;
-    } else if (char === ",") {
-      values.push(current);
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  values.push(current);
-  return values;
 }
 
 export function formatFaqText(rows: FaqRow[]): string {

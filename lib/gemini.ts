@@ -1,10 +1,12 @@
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { GeminiFinishReason, GeminiResult } from "@/types";
 import { buildSystemPrompt, sanitizeUserMessage } from "@/lib/prompt";
 
-const MODEL = "gemini-3.5-flash";
-const TEMPERATURE = 1.0; // ห้ามปรับลด — Gemini 3.x ถูก tune ให้ใช้ค่า default
-const MAX_OUTPUT_TOKENS = 1024; // thinking + output นับรวมกัน
+// ชั่วคราว: สลับจาก gemini-3.5-flash มา 2.5-flash เพราะ API key ชนโควต้า 429 ของ 3.5
+// (ดู error ใน Vercel logs) — สลับกลับได้เมื่อเปิด billing/โควต้าเพิ่มแล้ว
+const MODEL = "gemini-2.5-flash";
+const TEMPERATURE = 1.0;
+const MAX_OUTPUT_TOKENS = 1024;
 const TIMEOUT_MS = 8000;
 
 let client: GoogleGenAI | null = null;
@@ -63,10 +65,10 @@ export async function callGemini(
         systemInstruction: buildSystemPrompt(faqText),
         temperature: TEMPERATURE,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
-        // งาน FAQ lookup สั้นๆ ไม่ต้อง reasoning ลึก — ปล่อย default (dynamic) แล้ว
-        // thoughtsTokenCount กินโควต้า maxOutputTokens จนตอบไม่จบ (MAX_TOKENS) มาแล้วจริงใน prod
+        // งาน FAQ lookup สั้นๆ ไม่ต้อง reasoning ลึก — ปิด thinking ไปเลย กัน
+        // thoughtsTokenCount กินโควต้า maxOutputTokens จนตอบไม่จบ (MAX_TOKENS) แบบที่เจอมาแล้ว
         thinkingConfig: {
-          thinkingLevel: ThinkingLevel.LOW,
+          thinkingBudget: 0,
         },
       },
     }),

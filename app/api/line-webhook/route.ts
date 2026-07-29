@@ -34,6 +34,16 @@ async function replyWithRetry(
 }
 
 async function handleEvent(event: WebhookEvent): Promise<void> {
+  // ช่วยหา groupId/roomId จริง — ไม่ใช่ PII ของลูกค้า เป็นแค่ ID ของห้องแชท
+  // ใช้ค่านี้ไปตั้ง ADMIN_GROUP_ID ได้เลยเมื่อบอทถูกเชิญเข้ากลุ่มแอดมินแล้ว
+  if (event.source?.type === "group" || event.source?.type === "room") {
+    log.info("webhook.source_id", {
+      sourceType: event.source.type,
+      groupId: event.source.type === "group" ? event.source.groupId : undefined,
+      roomId: event.source.type === "room" ? event.source.roomId : undefined,
+    });
+  }
+
   if (event.type !== "message" || event.message.type !== "text") return;
 
   const { replyToken, message, source } = event;

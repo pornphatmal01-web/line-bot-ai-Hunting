@@ -1,5 +1,6 @@
 import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { GeminiFinishReason, GeminiResult } from "@/types";
+import { buildSystemPrompt, sanitizeUserMessage } from "@/lib/prompt";
 
 const MODEL = "gemini-3.5-flash";
 const TEMPERATURE = 1.0; // ห้ามปรับลด — Gemini 3.x ถูก tune ให้ใช้ค่า default
@@ -48,14 +49,18 @@ function normalizeFinishReason(reason: string | undefined): GeminiFinishReason {
   }
 }
 
-export async function callGemini(prompt: string): Promise<GeminiResult> {
+export async function callGemini(
+  userMessage: string,
+  faqText: string
+): Promise<GeminiResult> {
   const ai = getClient();
 
   const response = await withTimeout(
     ai.models.generateContent({
       model: MODEL,
-      contents: prompt,
+      contents: sanitizeUserMessage(userMessage),
       config: {
+        systemInstruction: buildSystemPrompt(faqText),
         temperature: TEMPERATURE,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
         // งาน FAQ lookup สั้นๆ ไม่ต้อง reasoning ลึก — ปล่อย default (dynamic) แล้ว

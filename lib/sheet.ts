@@ -1,4 +1,5 @@
 import { FaqRow } from "@/types";
+import { log } from "@/lib/log";
 
 const CACHE_TTL_MS = 60_000;
 
@@ -59,6 +60,17 @@ function splitCsvLine(line: string): string[] {
   return values;
 }
 
+export function formatFaqText(rows: FaqRow[]): string {
+  return rows
+    .filter((row) => row.question && row.answer)
+    .map((row) => {
+      const label = row.category ? `[${row.category}] ` : "";
+      const keywords = row.keywords ? ` (คำที่เกี่ยวข้อง: ${row.keywords})` : "";
+      return `${label}${row.question}${keywords}\n→ ${row.answer}`;
+    })
+    .join("\n\n");
+}
+
 export async function getFaqCsv(): Promise<{ csvRaw: string; rows: FaqRow[] }> {
   const now = Date.now();
 
@@ -84,7 +96,9 @@ export async function getFaqCsv(): Promise<{ csvRaw: string; rows: FaqRow[] }> {
     return { csvRaw, rows };
   } catch (error) {
     if (cache) {
-      console.error("[sheet] fetch failed, serving stale cache:", error);
+      log.warn("sheet.fetch_failed_stale_cache", {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return { csvRaw: cache.csvRaw, rows: cache.rows };
     }
     throw error;

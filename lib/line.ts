@@ -34,4 +34,12 @@ export async function replyText(replyToken: string, text: string): Promise<void>
   });
 }
 
+export async function pushText(to: string, text: string): Promise<void> {
+  const lineClient = getClient();
+  await lineClient.pushMessage({
+    to,
+    messages: [{ type: "text", text }],
+  });
+}
+
 export type { WebhookEvent };

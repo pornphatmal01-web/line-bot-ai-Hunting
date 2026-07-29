@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { GeminiFinishReason, GeminiResult } from "@/types";
 
 const MODEL = "gemini-3.5-flash";
@@ -58,6 +58,11 @@ export async function callGemini(prompt: string): Promise<GeminiResult> {
       config: {
         temperature: TEMPERATURE,
         maxOutputTokens: MAX_OUTPUT_TOKENS,
+        // งาน FAQ lookup สั้นๆ ไม่ต้อง reasoning ลึก — ปล่อย default (dynamic) แล้ว
+        // thoughtsTokenCount กินโควต้า maxOutputTokens จนตอบไม่จบ (MAX_TOKENS) มาแล้วจริงใน prod
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
       },
     }),
     TIMEOUT_MS
